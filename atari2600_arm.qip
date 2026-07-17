@@ -1,0 +1,11 @@
+# Atari2600_ARM_MiSTer - ARM Thumb + CDF bridge RTL package
+# Quartus Prime 17.0.2 compatible QIP.
+# Place this .qip beside the rtl/ directory, then add it to the existing Atari2600 project.
+
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/thumb_decode.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/thumb_core.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/cdf_family_params.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/harmony_m10k_tdp.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/cdf_m10k_memories.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/cdf_bridge.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE [file join $::quartus(qip_path) "rtl/atari2600_arm_subsystem.sv"]
