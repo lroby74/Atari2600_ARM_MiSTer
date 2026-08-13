@@ -38,3 +38,5 @@ There are still a pair of bugs that are very hard to fix (everyone is invited to
 I don't have the full game to test, although I'd like to. 
 
 2) Spiders Arcade: if you shoot very quickly, without waiting for the projectile to disappear from the screen, the first yellow segment of the next projectile appears in the previous position of the spaceship, it does not affect the gameplay, it is just annoying to see
+
+Warning: Make sure you have the STABILIZE VIDEO option set to OFF otherwise some titles will have the screen flickering and it is not a problem with the game or the core but rather it is this option that is messing up.
