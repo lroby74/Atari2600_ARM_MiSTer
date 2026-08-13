@@ -1,0 +1,22 @@
+TREBORS ATARI 2600 ONLY PALETTES:
+
+UNCALIBRATED = Raw luminance values.
+
+CALIBRATED = Luminance calibrated per official utility and diagnostic tools.
+
+MODIFIED = Modified luminance for modern displays, accounts for some picture processing features.
+
+SUPER = Superior luminance and saturation.
+
+GAMMASAT1 = Increased luminance base, retain calibration, default saturation.
+
+GAMMASAT2 = Increased luminance base, retain calibration, substantial saturation increase.
+
+GAMMASAT3 = Increased luminance base, retain calibration, proportionally increased saturation.
+
+LUM1 = Minimal luminance range without darkest hues appearing black.
+
+LUM2 = Lowered luminance range containing decreased luminance values.
+
+LUM3 = Widest luminance range and max luminance values while avoiding washout.
+
