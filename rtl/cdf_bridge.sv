@@ -68,7 +68,22 @@ module cdf_bridge #(
   // di prima del 7 agosto, senza toccare la macchina a stati. Serve se il
   // collaudo su hardware dovesse dare problemi: si isola l'attesa a budget
   // lasciando in piedi la porta B a 1 ciclo, che e' verificata neutra a parte.
-  parameter [17:0] DWAIT_BUDGET = 18'd4
+  parameter [17:0] DWAIT_BUDGET = 18'd4,
+  // PASSO ARSP (attesa sulla risposta del COMMSTREAM). ARSP_BUDGET e' solo
+  // una rete di sicurezza: l'uscita normale e' la FINE della corsa ARM.
+  // Con ARSP_EN=0 il comportamento torna esattamente quello di prima.
+  parameter bit    ARSP_EN     = 1'b1,
+  // 0 = attesa su TUTTO il ramo CDF (scelta del PM, 13 ago 2026, cosi' ne
+  //     beneficiano anche Lode Runner e Mappy).
+  // 1 = solo CDFJ+ (il ramo di Spiders), variante piu' conservativa.
+  // MISURATO con 0: 37 titoli su 38 con video IDENTICO; `zoo` cambia 60-109
+  // pixel su 72.000, ed e' la SOLA cifra del punteggio che cicla di colore
+  // presa in un punto diverso del ciclo (stessa sequenza bianco x4 / ciano
+  // x2 / azzurro x2, sfasata di 4 fotogrammi; geometria identica, scritture
+  // TIA identiche). Il PM ha verificato su Gopher che li' il punteggio
+  // cambia colore davvero: `zoo` e' a posto.
+  parameter bit    ARSP_PLUS_ONLY = 1'b0,
+  parameter [17:0] ARSP_BUDGET = 18'd8192
 )(
   input wire clk,               // clk_sys: 6502 engine / loader / control
   input wire clk_vid,           // Livello 1: dominio ARM (thumb_core) - porte A M10K + adapter bus ARM
@@ -111,6 +126,12 @@ module cdf_bridge #(
   // terza condizione ("sto per servire un datastream") e alza ds_wait, che in
   // top.sv toglie RDY al 6507 per il tempo strettamente necessario.
   input wire ds_wait_arm,
+  // PASSO ARSP: "una corsa ARM e' in volo E la TIA NON sta disegnando".
+  // ds_wait_arm e' il complementare (Kernel) e li' l'attesa NON si puo'
+  // fare: un ciclo perso dentro un kernel a cicli esatti sposta il pennello.
+  // La lettura della risposta cade in overscan (riga 247), quindi tutta
+  // l'attesa utile sta fuori dal disegno.
+  input wire arm_run_now,
   output wire ds_wait,
   // loader
   input wire rom_load_we, input wire [16:0] rom_load_addr, input wire [7:0] rom_load_data,
@@ -364,10 +385,18 @@ module cdf_bridge #(
     S_DWAIT = 6'd37;
 
   reg [5:0] state;
+  // PASSO ARSP: ritenuta del 6507 PARALLELA alla macchina a stati.
+  // Non e' uno stato della FSM perche' `trigger` prelaziona qualunque
+  // stato al primo accesso del 6507, e il ciclo dopo la scrittura di DSPTR
+  // e' un'altra SCRITTURA (il 6502 onora RDY solo sulle letture): l'attesa
+  // verrebbe abortita subito e la scrittura di ritorno del puntatore
+  // (S_CW3) andrebbe PERDUTA. Provato: Spiders non entrava piu' in partita.
+  reg        arsp_hold;
+  reg [17:0] arsp_cnt;
 
   // FASE9: il 6507 e' in attesa esattamente quando la FSM e' parcheggiata in
   // S_DWAIT. Nessun latch: e' una funzione dello stato corrente.
-  assign ds_wait = (state == S_DWAIT);
+  assign ds_wait = (state == S_DWAIT) || arsp_hold;
 
   // contatore di timeout (§3.3): azzerato all'ingresso in S_DWAIT
   reg [17:0] dwait_cnt;
@@ -473,6 +502,7 @@ module cdf_bridge #(
       dig_addr <= 0;
       rom_addr_b <= 0; harmony_addr_b <= 0; harmony_be_b <= 0; harmony_wdata_b <= 0;
       callfn_val <= 0;
+      arsp_hold <= 1'b0; arsp_cnt <= 18'd0;
       cb_ack <= 0; cb_ret <= 0;
       for (k = 0; k < 3; k = k + 1) begin
         music_freq[k] <= 32'd0; music_cnt[k] <= 32'd0; wave_size[k] <= 8'd27;
@@ -502,6 +532,22 @@ module cdf_bridge #(
           endcase
         end
       end else if (!cb_req) cb_ack <= 1'b0;
+
+      //----------------------------------------------------------------
+      // PASSO ARSP: la ritenuta si arma sulla scrittura di DSPTR ($FF1)
+      // fatta mentre una corsa ARM e' in volo fuori dal disegno, e cade da
+      // sola quando la corsa finisce (o al tetto ARSP_BUDGET, rete
+      // anti-deadlock: un 6507 fermo non puo' far avanzare niente).
+      //----------------------------------------------------------------
+      if (!arsp_hold) begin
+        arsp_cnt <= 18'd0;
+        if (ARSP_EN && (is_plus || !ARSP_PLUS_ONLY) &&
+            trigger && !m6502_rwn && (off_in == 12'hff1) && arm_run_now)
+          arsp_hold <= 1'b1;
+      end else begin
+        arsp_cnt <= arsp_cnt + 1'b1;
+        if (!arm_run_now || arsp_cnt >= ARSP_BUDGET) arsp_hold <= 1'b0;
+      end
 
       //----------------------------------------------------------------
       // per-CPU-cycle trigger (preempts any background work)

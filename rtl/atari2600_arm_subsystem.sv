@@ -478,6 +478,7 @@ module atari2600_arm_subsystem (
         .ff_offset    (is_plus_fam ? ff_offset_r : 16'd0),
         .disp_bank    (disp_bank),
         .ds_wait_arm  (ds_wait_arm),   // FASE9: Kernel & run ARM attivo (livello)
+        .arm_run_now  (arm_running & vblank_sw), // PASSO ARSP: solo FUORI dal disegno
         .ds_wait      (ds_wait),       // FASE9: wait-state sul serve datastream
 
         .rom_load_we  (cart_download & ioctl_wr & (ioctl_addr < 19'd131072)),
