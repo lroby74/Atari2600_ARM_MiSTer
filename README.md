@@ -16,8 +16,8 @@ BIOS, XM expansion) has been removed.
 * All standard 2600 mappers handled by `cart2600` / `banks2600` (F8, F6, FE,
   E0, 3F, F4, P2, FA, CV, 2K, UA, E7, F0, 32, AR, 3E, SB, WD, EF, ...).
 
-  The core has been tested on a few dozen titles that require my ARM CPU (including the 64KB Elevator Agent and the 128KB Turbo Arcade), and all except the two listed below work.
-Of course, all the original classics also work perfectly.
+  The core has been tested on a few dozen titles that require ARM CPU (including the 64KB Elevator Agent and the 128KB Turbo Arcade).
+  Of course, all the original classics also work perfectly.
 
 *  **Startup splash screen**: at power-on the core shows an "ATARI 2600 ARM" logo (will be changed on next time)
  It is dismissed first time that a game ROM is loaded and it's valid for both the 15 kHz CRT and the HDMI
