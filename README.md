@@ -31,6 +31,10 @@ etc.) which is provided by the MiSTer build environment. `build_id.v` is
 generated at build time (a static copy is included so the project opens
 standalone). The compiling time is very long (about half hour on my PC)
 
+
+## To do / bug to be fixed
+Quadtari device is always detected even when his setting is on off
+
 ## Notes / known limitations
 Original Atari 2600 Paddle DB9 via Snac ADC is still not working, will be fixed on next release too  
 
