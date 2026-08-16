@@ -34,4 +34,4 @@ standalone). The compiling time is very long (about half hour on my PC)
 ## Notes / known limitations
 Original Atari 2600 Paddle DB9 via Snac ADC is still not working, will be fixed on next release too  
 
-Warning: Make sure you have the STABILIZE VIDEO option set to OFF otherwise some titles will have the screen flickering and it is not a problem with the game or the core but rather it is this option that is messing up.
+Warning: Make sure to turn OFF the "Stabilize Video" option. Otherwise, some titles will suffer from screen flickering. This is not an issue with the game or the core, but a known glitch caused by this specific setting.
