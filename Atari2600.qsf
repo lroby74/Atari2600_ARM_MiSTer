@@ -327,7 +327,7 @@ set_global_assignment -name AUTO_EXPORT_VER_COMPATIBLE_DB ON
 # ============================================================================
 
 
-set_global_assignment -name SEED 12
+set_global_assignment -name SEED 9
 
 # --- FITTER SPINTO (12 ago 2026) -------------------------------------------
 # Queste sei direttive erano in `tools/fit_spinto.sh` e NON nel repo: tutte le
