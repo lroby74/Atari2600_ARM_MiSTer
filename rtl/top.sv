@@ -19,6 +19,7 @@ module Atari2600
 	input  logic        show_border,
 	input  logic        show_overscan,
 	output logic [15:0] AUDIO_R, AUDIO_L,
+	input  logic        stereo_tia,   // 1 = AUD0 a sinistra, AUD1 a destra
 	input  logic [7:0]  cart_out,
 	output logic        cart_read,
 	output logic [24:0] cart_addr_out,
@@ -267,8 +268,16 @@ module Atari2600
 		.pix_ce         (ce_pix)
 	);
 
-	// Mono TIA audio (no stereo / multichannel per spec). The non-linear mix
-	// table follows https://atariage.com/forums/topic/271920-tia-sound-abnormalities/
+	// TIA audio. The non-linear mix table follows
+	// https://atariage.com/forums/topic/271920-tia-sound-abnormalities/
+	//
+	// 17 ago 2026 - STEREO TIA. Prima i due canali venivano SEMPRE sommati in
+	// un indice unico e lo stesso campione andava a destra e a sinistra: la
+	// voce OSD "Stereo TIA" esisteva nel menu ma non era collegata a niente.
+	// Con `stereo_tia` alto ogni canale passa per la STESSA tabella indicizzata
+	// col proprio volume: un canale che suona da solo produce esattamente
+	// quello che produrrebbe in mono con l'altro muto. Il nastro del
+	// Supercharger resta su entrambi i lati.
 	logic [15:0] audio_lut[32];
 	assign audio_lut = '{
 		16'h0000, 16'h0842, 16'h0FFF, 16'h1745, 16'h1E1D, 16'h2492, 16'h2AAA, 16'h306E,
@@ -278,8 +287,13 @@ module Atari2600
 	};
 	wire [5:0] aud_index = audv0 + audv1;
 	wire [16:0] audio_mix = audio_lut[aud_index] + {tape_audio, 12'd0};
-	assign AUDIO_R = audio_mix[15:0];
-	assign AUDIO_L = audio_mix[15:0];
+	// {1'b0, ...}: la tabella ha 32 voci e i volumi sono a 4 bit. Senza
+	// allargare l'indice, Quartus alza un warning 10027: benigno, ma un
+	// warning nuovo resta un warning nuovo.
+	wire [16:0] audio_ch0 = audio_lut[{1'b0, audv0}] + {tape_audio, 12'd0};
+	wire [16:0] audio_ch1 = audio_lut[{1'b0, audv1}] + {tape_audio, 12'd0};
+	assign AUDIO_L = stereo_tia ? audio_ch0[15:0] : audio_mix[15:0];
+	assign AUDIO_R = stereo_tia ? audio_ch1[15:0] : audio_mix[15:0];
 
 	// RIOT (6532) with its internal 128 bytes of RAM - this is the 2600 RAM.
 	M6532 riot_inst

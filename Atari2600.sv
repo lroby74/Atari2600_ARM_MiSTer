@@ -110,7 +110,6 @@ parameter CONF_STR = {
 	"P1OUV,Temperature Colors,Warm,Cool,Hot,Custom;",
 	"H3P1FC3,PAL,Load Palette;",
 	"P2,Peripherals;",
-	"P2OIJ,High Score Cart,Auto,On,Off;",
 	"P2O7,Swap Joysticks,No,Yes;",
 	"P2-;",
 	"P2o69,Port1 Input,Auto,None,Joystick,Lightgun,Paddle,Trakball,Keypad,Driving,STMouse,AmigaMouse,BoosterGrip,Robotron,SaveKey,SNAC;",
@@ -357,6 +356,7 @@ Atari2600 main
 	// Audio (mono)
 	.AUDIO_R      (tia_audio_r),
 	.AUDIO_L      (tia_audio_l),
+	.stereo_tia   (status[4]),
 
 	// Cart Interface
 	.cart_out     (cart_download ? ioctl_dout[7:0] : (cart_loaded ? cart_data_sd : cart_data)),
@@ -729,7 +729,36 @@ logic [15:0] joya, joyb;
 // male, la voce OSD Quadtari=Off e' il rimedio.
 wire quadtari_en = ~status[46];
 wire qt_second   = quadtari_en & ~iout[0];   // VBLANK[7]=1 -> secondo controller
-assign joya = qt_second ? joy2 : (status[7] ? joy1 : joy0);
+
+// 17 agosto 2026 - IL SECONDO GIOCATORE PUO' STARE SUL PAD 2.
+// Segnalato dal PM: col QuadTari attivo i due giocatori stanno sul pad 1 e sul
+// pad 3, e sul suo MiSTer il pad 3 non viene riconosciuto; con la SaveKey sulla
+// porta 2 il QuadTari resta quindi inutilizzabile in due. Con la SaveKey li'
+// il pad 2 non serve a nessuno, ed e' quello che questa voce gli fa fare.
+// Predefinito = Pad3, cioe' il comportamento di sempre.
+// La porta 2 e' occupata dalla SaveKey: li' un joystick non ci puo' stare.
+// (tipo 11 = SaveKey nella lista "Port2 Input", vedi il ramo `11:` piu' sotto.)
+wire portb_savekey = (portb_type == 8'd11);
+// La porta 2 non ha NESSUNO che possa usare il pad 2: SaveKey (11) oppure
+// "None" (0). Sono gli unici due casi: paddle, mouse, trackball, keypad e
+// compagnia il pad 2 lo usano eccome, e spostarlo li' romperebbe.
+wire portb_senza_joy = portb_savekey | (portb_type == 8'd0);
+
+// >>> AUTOMATICO, come chiesto dal PM: "il P2 dovrebbe essere visto come P3
+// nel momento in cui il QuadTari e' inserito". Vale pero' SOLO quando il pad 2
+// non ha piu' un posto suo: nello standard QuadTari il giocatore 2 sta sulla
+// PORTA 2, quindi spostarlo sempre lascerebbe a bocca asciutta chi ha due
+// joystick sulle due porte. Con la SaveKey li' sopra il posto non c'e', e
+// allora il pad 2 diventa il secondo controller della porta 1 (slot del
+// giocatore 3) da solo. La voce OSD resta per forzarlo negli altri casi.
+wire qt_pad2 = quadtari_en & portb_senza_joy;
+
+// Con la SaveKey sulla porta 2 quella porta non deve vedere un joystick: il
+// ramo `11:` sovrascrive solo PAin[2] (il dato dell'EEPROM) e lasciava passare
+// destra, giu', su e il FUOCO dal pad 2.
+// (Qui c'era un `pb_muto = qt_pad2 | portb_savekey`: siccome qt_pad2 implica
+// portb_savekey, valeva esattamente portb_savekey. Un segnale in meno.)
+assign joya = qt_second ? (qt_pad2 ? joy1 : joy2) : (status[7] ? joy1 : joy0);
 assign joyb = qt_second ? joy3 : (status[7] ? joy0 : joy1);
 
 //    Col0  Col1  Col2
@@ -927,14 +956,45 @@ always_comb begin
 	// Ora passa per entrambi i tipi che sono davvero un joystick (0 = nessuno,
 	// 1 = joystick); per paddle, mouse, trackball, keypad ecc. resta a zero,
 	// perche' quelle linee servono a loro.
+	//
+	// >>> 15 agosto 2026 - IL QUADTARI SI VEDEVA ANCHE DA SPENTO <<<
+	// Segnalato dal PM: con la voce OSD Quadtari=Off i giochi lo trovavano
+	// lo stesso, e questo puo' far comportare male dei classici.
+	//
+	// La mux dei due controller (`qt_second`) era gia' governata da
+	// `quadtari_en`: il gioco pero' non riconosce l'adattatore da quella, lo
+	// riconosce dai due piedini ANALOGICI della porta. Il QuadTari tiene il
+	// pin 9 a Vcc e il pin 5 a massa, cioe' INPT1 letto ALTO con INPT0 letto
+	// BASSO (Stella, QuadTari.cxx:73-75, commentate proprio "QuadTari auto
+	// detection setting"). Un joystick SENZA adattatore lascia i due piedini
+	// scollegati, e li' si legge 0 su entrambi (Stella, Control.hxx:426:
+	// `AnalogReadout::disconnect()`; in questo core INPT0-3 valgono `i[]`
+	// quando VBLANK[7] e' basso, rtl/TIA.sv:2140).
+	//
+	// Qui INPT1/INPT3 stavano ALTI su qualunque porta di tipo joystick,
+	// perche' e' la linea su cui viaggia il SECONDO PULSANTE (a riposo alta,
+	// premuta bassa): e' esattamente la firma del QuadTari.
+	//
+	// >>> E' LO STESSO FILO, e sull'hardware vero non c'e' modo di avere il
+	// secondo pulsante e insieme nascondere l'adattatore: un joystick a due
+	// pulsanti tiene alto quel piedino tale e quale. Con Quadtari=Off la
+	// porta torna quindi quella di un 2600 liscio - un pulsante solo - che e'
+	// poi quello che serve ai classici. Con Quadtari=On (il valore
+	// predefinito) non cambia nulla rispetto a prima.
 	idump = tia_en
-		? {((portb_type <= 8'd1) ? ~joyb[5] : 1'b0), 1'd0,
-		   ((porta_type <= 8'd1) ? ~joya[5] : 1'b0), 1'd0}
+		? {((portb_type <= 8'd1) && quadtari_en ? ~joyb[5] : 1'b0), 1'd0,
+		   ((porta_type <= 8'd1) && quadtari_en ? ~joya[5] : 1'b0), 1'd0}
 		: {joyb[4], joyb[5], joya[4], joya[5]}; // P2 F1, P2 F2, P1 F1, P1 F2 or Analog
 	PAin[7:4] = {~joya[0], ~joya[1], ~joya[2], ~joya[3]}; // P1: R L D U
-	PAin[3:0] = {~joyb[0], ~joyb[1], ~joyb[2], ~joyb[3]}; // P2: R L D U
+	// Con la SaveKey sulla porta 2 il pad 2 e' passato alla porta 1 (secondo
+	// controller del QuadTari): se restasse anche qui, il gioco vedrebbe gli
+	// stessi movimenti su DUE porte. E comunque il ramo SaveKey sovrascrive
+	// solo PAin[2], quindi da solo lascerebbe passare le altre tre direzioni
+	// e il fuoco.
+	PAin[3:0] = portb_savekey ? 4'b1111 : {~joyb[0], ~joyb[1], ~joyb[2], ~joyb[3]}; // P2: R L D U
 	ilatch[0] = tia_en ? ~joya[4] : ~(joya[4] || joya[5]); // P1 Fire
-	ilatch[1] = tia_en ? ~joyb[4] : ~(joyb[4] || joyb[5]); // P2 Fire
+	ilatch[1] = portb_savekey ? 1'b1                                            // vedi sopra
+	                    : (tia_en ? ~joyb[4] : ~(joyb[4] || joyb[5])); // P2 Fire
 	pad_muxa = ~status[49] ? {~pad_b[0], ~pad_b[1], pad_wire[1:0]} : {~pad_b[1:0], pad_wire[0], pad_wire[1]};
 	pad_muxb = ~status[49] ? {~pad_b[2], ~pad_b[3], pad_wire[3:2]} : {~pad_b[3:2], pad_wire[2], pad_wire[3]};
 	case (porta_type)

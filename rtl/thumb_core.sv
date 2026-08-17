@@ -223,7 +223,9 @@ module thumb_core (
   // PRECEDENTE - e il guasto e' silenzioso.
   reg [6:0]  dr_op;
   reg [3:0]  dr_rd, dr_rn, dr_rm;
-  reg [7:0]  dr_imm8;
+  // 17 ago 2026 - tolta la catena dell'immediato a 8 bit (dr_imm8/pd_imm8/
+  // d_imm8): veniva calcolata, registrata e non la leggeva NESSUNO. Il campo
+  // immediato in uso e' dr_imm11 -> dr_imm. Erano warning 10036.
   reg [10:0] dr_imm11;
   wire [11:0] dr_imm = {1'b0, dr_imm11};
   // PASSO 11c: `dr_illegal` NON si registra, si DERIVA dal registro `dr_op`.
@@ -379,26 +381,25 @@ module thumb_core (
   // --- un decoder per sorgente ---
   wire [6:0] pd_op   [0:3];
   wire [3:0] pd_rd   [0:3], pd_rn [0:3], pd_rm [0:3];
-  wire [7:0] pd_imm8 [0:3];
   wire [10:0] pd_imm11[0:3];
   wire       pd_ill  [0:3];
 
   thumb_decode dec_pc (
     .op(ir_pc),  .d_op(pd_op[0]), .d_rd(pd_rd[0]), .d_rn(pd_rn[0]),
-    .d_rm(pd_rm[0]), .d_imm8(pd_imm8[0]), .d_imm11(pd_imm11[0]),
+    .d_rm(pd_rm[0]), .d_imm11(pd_imm11[0]),
     .d_illegal(pd_ill[0]));
   // PASSO 33: un decoder solo, sul bersaglio gia' scelto.
   thumb_decode dec_brt (
     .op(ir_brt), .d_op(pd_op[1]), .d_rd(pd_rd[1]), .d_rn(pd_rn[1]),
-    .d_rm(pd_rm[1]), .d_imm8(pd_imm8[1]), .d_imm11(pd_imm11[1]),
+    .d_rm(pd_rm[1]), .d_imm11(pd_imm11[1]),
     .d_illegal(pd_ill[1]));
   // PASSO 32: il decoder di lr_pc e' sparito con la sua sorgente.
   assign pd_op[2]=7'd0; assign pd_rd[2]=4'd0; assign pd_rn[2]=4'd0;
-  assign pd_rm[2]=4'd0; assign pd_imm8[2]=8'd0; assign pd_imm11[2]=11'd0;
+  assign pd_rm[2]=4'd0; assign pd_imm11[2]=11'd0;
   assign pd_ill[2]=1'b0;
   thumb_decode dec_bus (
     .op(ir_bus), .d_op(pd_op[3]), .d_rd(pd_rd[3]), .d_rn(pd_rn[3]),
-    .d_rm(pd_rm[3]), .d_imm8(pd_imm8[3]), .d_imm11(pd_imm11[3]),
+    .d_rm(pd_rm[3]), .d_imm11(pd_imm11[3]),
     .d_illegal(pd_ill[3]));
 
   //---- classificatori per il fast-path fetch+execute (Step 1 speed) ----
@@ -652,7 +653,7 @@ module thumb_core (
       cb_req  <= 1'b0; cb_id <= 2'd0;
       ir      <= 16'd0;
       dr_op <= OP_LSL1; dr_rd <= 4'd0; dr_rn <= 4'd0; dr_rm <= 4'd0;
-      dr_imm8 <= 8'd0; dr_imm11 <= 11'd0;
+      dr_imm11 <= 11'd0;
       brt <= 32'd0;
       fetch_valid <= 64'd0; fetch_lru <= 32'd0;
       bus_req <= 1'b0; bus_we <= 1'b0; bus_be <= 4'd0; bus_sz <= 2'd2;
@@ -1252,7 +1253,7 @@ module thumb_core (
         ir       <= ir_src[dr_sel];
         dr_op    <= pd_op[dr_sel];    dr_rd    <= pd_rd[dr_sel];
         dr_rn    <= pd_rn[dr_sel];    dr_rm    <= pd_rm[dr_sel];
-        dr_imm8  <= pd_imm8[dr_sel];  dr_imm11 <= pd_imm11[dr_sel];
+        dr_imm11 <= pd_imm11[dr_sel];
         brt      <= pre_brt[dr_sel];   // PASSO 33
       end
       if (wr_en) begin

@@ -32,7 +32,6 @@ module thumb_decode (
     output reg  [3:0]  d_rd,
     output reg  [3:0]  d_rn,
     output reg  [3:0]  d_rm,
-    output reg  [7:0]  d_imm8,
     output reg  [10:0] d_imm11,
     output reg         d_illegal
 );
@@ -63,7 +62,6 @@ module thumb_decode (
         d_rd      = {1'b0, op[2:0]};
         d_rn      = {1'b0, op[5:3]};
         d_rm      = {1'b0, op[8:6]};
-        d_imm8    = op[7:0];
         d_imm11   = {6'd0, op[10:6]};
         d_illegal = 1'b0;
 

@@ -41,7 +41,7 @@ module  pll_0002(
 		// 64,431819 = 9u, con u = 7,159091 MHz. Il VCO e' 515,43 e le uscite
 		// sono divisioni intere: /9 = 57,27 (clk_vid), /8 = 64,43. In mezzo
 		// non c'e' nulla - 61 MHz viene rifiutato dal fitter.
-		.output_clock_frequency3("71.590910 MHz"),
+		.output_clock_frequency3("64.431819 MHz"),
 		.phase_shift3("0 ps"),
 		.duty_cycle3(50),
 		.output_clock_frequency4("0 MHz"),
