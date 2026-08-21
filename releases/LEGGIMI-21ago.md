@@ -1,6 +1,6 @@
 # RBF di consegna — 21 agosto 2026
 
-**Da usare: `Atari2600.rbf`**
+**Da usare: `Atari 2600 ARM_20260821.rbf`**
 MD5 `16beae870d5d8ec31b57bcb41ec5d6e8` — 3.895.452 byte.
 
 ```
@@ -11,6 +11,11 @@ errori ..................... 0
 ALM ........................ 25.654 / 41.910 (61%)
 M10K ....................... 372 / 553 (67%)
 ```
+
+Il nome porta la data della compilazione: il MiSTer carica quello con la
+data piu' recente, quindi le versioni vecchie si possono lasciare nella
+cartella `_Console/` come rete di sicurezza. Il file `Atari 2600 ARM.mgl`
+punta al nome **senza** data, ed e' cosi' che deve stare.
 
 Seed **3**. Compilato con `db/` e `incremental_db/` cancellati, cioe' partendo
 dal piazzamento vuoto come fa chi clona il repo.
