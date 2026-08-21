@@ -87,6 +87,10 @@ cartridge, BIOS, XM expansion) has been removed.
 
 ## Build
 
+A ready-made bitstream is attached to the
+[Releases](../../releases) page: copy `Atari 2600 ARM_YYYYMMDD.rbf`
+into the `_Console/` folder of the SD card. To build it yourself:
+
 Open `Atari2600.qpf` with **Quartus Prime 17.0.2 Lite Edition** and compile.
 The project uses the standard MiSTer framework in `sys/` (PLLs, HPS IO, video
 mixer, SDRAM, etc.). `build_id.v` is generated at build time (a static copy is
@@ -98,7 +102,7 @@ The `.qsf` is set up so that the compilation is **reproducible**:
 
 ```
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 1
-set_global_assignment -name SEED 12
+set_global_assignment -name SEED 3
 ```
 
 **Please leave `NUM_PARALLEL_PROCESSORS` at 1.** With `ALL` the fitter uses every
@@ -106,14 +110,14 @@ core of the machine and the result *depends on how many there are*: the same
 tree with the same seed gave +0.079 and +0.224 ns on two different runs here.
 With a fixed value the fit is deterministic, and the seed chosen in this repo is
 worth something on your machine too. The price is compilation time (the fitter
-takes about 15 minutes here instead of a few).
+takes about 30 minutes here instead of a few).
 
 Expected results with the settings above, so you can tell at once whether
 something went wrong on your side:
 
 ```
-Worst-case setup slack, Slow 1100 mV 100C ....  +0.375 ns
-Worst-case setup slack, Slow 1100 mV -40C ....  +0.147 ns
+Worst-case setup slack, Slow 1100 mV 100C ....  +0.553 ns
+Worst-case setup slack, Slow 1100 mV -40C ....  +0.326 ns
 Critical warnings (332148) ...................  0
 Errors .......................................  0
 ```
