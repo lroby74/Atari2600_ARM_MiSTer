@@ -64,6 +64,13 @@ cartridge, BIOS, XM expansion) has been removed.
   hardware (21 Aug 2026). It is unlikely to be the only such title.
   The same line carries the QuadTari detection, so setting the **QuadTari**
   entry to `Off` disables the second button together with the adapter.
+* **Two-button sticks on SNAC.** Verified on real hardware with a two-button
+  joystick wired to the **SMS / SC-3000 / Amiga** standard, where fire B sits on
+  **pin 9**. That pin reaches `INPT1` on port 1 and `INPT3` on port 2 — the same
+  line two-button games read, and the same one the USB path uses — so such a
+  stick works without any configuration. An **Atari 7800 gamepad is not
+  compatible** for the second button: its first fire works as usual, the second
+  does not reach that line.
 * **QuadTari** (OSD entry, default `On`). Games detect the adapter from the two
   *analog* pins of the port, not from the controller multiplexing: with the
   entry set to `Off` the port now looks exactly like a plain 2600 port, so the
