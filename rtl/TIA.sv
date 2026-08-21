@@ -303,8 +303,9 @@ module inverter_reg
 );
 
 	logic inv_latch = 0;
-	// FIXME: I'm treating this as a gate delay since I am using a 14mhz clock for this design,
-	// but with slower clocks, this may need to be continuous to work correctly.
+	// Nota del modello originale: il latch e' trattato come un ritardo di
+	// porta perche' il progetto gira a 14 MHz. Con un clock piu' lento
+	// andrebbe reso continuo.
 	assign out = /*set ? in : */inv_latch;
 
 	always @(posedge clk) begin
@@ -1583,6 +1584,20 @@ module video_stabilize
 		old_vsync <= vsync_in;
 		if (&v_count) begin // Something is whack, emulate a signal
 			total_lines <= 9'd262;
+			// 21 ago 2026 - QUI `vsync_line` NON SI TOCCA, ed e' voluto.
+			// Con `vsync_line` a 0 questo ripiego emette il VSYNC quando il
+			// contatore arriva a 511, cioe' subito: e' il comportamento che il
+			// core ha sempre avuto, perche' il ramo di smorzamento tolto piu'
+			// sotto scriveva `vsync_line` solo con scarti di 1..3 righe, che
+			// all'avvio non capitano mai. MISURATO: vale 0 anche nel codice
+			// vecchio.
+			//
+			// Scriverci 262 sembrava una pulizia - lo dichiara la riga sopra -
+			// e invece cambia il punto in cui questo ramo emette. I giochi
+			// normali ci passano ALL'AVVIO, quindi l'uscita restava spostata di
+			// una riga per tutta la partita: misurato, faceva risultare DIVERSI
+			// otto titoli a lunghezza di fotogramma costante (sf, lady, qx, qyx,
+			// rw, sp2, tk, ev) che senza quella riga sono identici bit per bit.
 			vsync_override <= 1'd1;
 			vsync_emulate <= 1'd1;
 		end
@@ -1618,23 +1633,46 @@ module video_stabilize
 
 		if (vsync_start) begin
 			vsync_emulate <= 0;
-			if (v_count != total_lines) begin
-				vsync_set <= 1;
-				if (total_lines - v_count < 3'd4) begin
-					vsync_override <= 1;
-					vsync_line <= v_count;
-				end else if (v_count - total_lines < 3'd4) begin
-					vsync_override <= 1;
-					vsync_line <= total_lines;
-				end else begin
-					vsync_override <= 0;
-				end
-			end
-			if (~vsync_override) begin
-				vsync_set <= 1;
-			end
-			v_count <= 0;
-			total_lines <= v_count;
+			// ----------------------------------------------------------
+			// 21 ago 2026 - UN SOLO VSYNC PER FOTOGRAMMA.
+			//
+			// Qui c'era uno smorzamento che entrava in funzione solo se
+			// la lunghezza del fotogramma era cambiata di 1..3 righe:
+			// metteva `vsync_override` e faceva emettere un VSYNC nostro
+			// alla riga `vsync_line - 1`. Ma NON azzerava `v_count` (lo
+			// azzera solo `vsync_emulate`), quindi poco dopo arrivava il
+			// VSYNC vero del gioco e `vsync_set` ne faceva emettere UN
+			// SECONDO.
+			//
+			// MISURATO sul gameplay di Umi Machines e Umi Bombs, che
+			// oscillano di 3-5 righe e quindi ci cadevano dentro di
+			// continuo:
+			//
+			//                | Stabilize ON | Stabilize OFF
+			//   VBLANK/fotog |  0..1        | 1
+			//   righe attive |  0..240      | 189 fisse
+			//   lunghezza    |  4..271      | 267..272 (quella del gioco)
+			//
+			// Fotogrammi da QUATTRO righe con ZERO righe attive: e' il
+			// ballerio che il PM vede sul ferro dal 3 agosto, ed e' il
+			// motivo per cui quei titoli hanno sempre voluto la voce su
+			// OFF. Star Castle ha invece 270 righe fisse, non e' mai
+			// entrato in questo ramo, e infatti su ON sta bene.
+			//
+			// Lo smorzamento non serve: il MiSTer accetta benissimo un
+			// fotogramma di lunghezza variabile - e' quello che riceve su
+			// OFF, dove l'immagine e' ferma. Quello che non accetta e' un
+			// VSYNC di troppo. Quindi se ne emette UNO SOLO, quello del
+			// gioco, e si tiene la finestra visibile fissa, che e' cio' di
+			// cui ha bisogno Star Castle.
+			//
+			// Resta intatto il ramo d'emergenza `&v_count` piu' sopra:
+			// e' un'altra cosa, serve quando il gioco non manda VSYNC.
+			// ----------------------------------------------------------
+			vsync_set      <= 1;
+			vsync_override <= 0;
+			v_count        <= 0;
+			total_lines    <= v_count;
 
 			// if (dot_count > 15 && dot_count < 145) // Vsync outside of hblank can be considered invoking interlaced resolutions
 			// 	midline_sync <= 1;
@@ -1855,8 +1893,9 @@ always_ff @(posedge clk) begin
 		end
 	end
 
-	// FIXME: Due to analog delays in the chip, it appears these signals need roughly a
-	// 50ish nanosecond delay. This may need adaptation if you use a different speed clock.
+	// Nota del modello originale: per i ritardi analogici del chip vero questi
+	// segnali vogliono circa 50 ns di ritardo, tarato sul clock di questo
+	// progetto.
 	{hmclr, cxclr} <= '0;
 	if (~RW_n && phi2_delay && cs) begin
 		case(addr)

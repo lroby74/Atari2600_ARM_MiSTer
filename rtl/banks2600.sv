@@ -493,6 +493,68 @@ module mapper_FA
 
 endmodule
 
+module mapper_FA2
+(
+	input           clk,
+	input           reset,
+	input           a_change,
+	input           sc,
+	input   [12:0]  a_in,
+	input   [7:0]   d_in,
+	input           arm_hdr,    // immagine con 1K di codice ARM in testa (32K)
+	output  [7:0]   d_out,
+	output  [15:0]  flags_out,
+	output  [7:0]   oe,
+	output          ram_sel,
+	output          ram_rw,
+	output  [10:0]  ram_a,
+	output  [18:0]  rom_a
+);
+	// FA2 = CBS RAM Plus esteso della Harmony/Melody. Sette banchi da 4K con
+	// hotspot $1FF5..$1FFB, e i 256 byte di RAM della FA (scrittura $1000-$10FF,
+	// lettura $1100-$11FF): quella parte e' identica alla FA senza superchip.
+	//
+	// $1FF4 e' il comando flash con cui il gioco salva i punteggi sulla
+	// cartuccia vera. Qui non si persiste niente, ma il valore letto NON puo'
+	// essere quello grezzo della ROM: il gioco aspetta che il bit 6 vada a zero
+	// per sapere che l'operazione e' finita, e con il bit 6 alto resterebbe in
+	// attesa per sempre. Si usa flags_out[1] (metti in AND con la ROM) e si
+	// tiene basso il solo bit 6, esattamente come fa Stella al termine
+	// dell'attesa (CartFA2.cxx, `return ... & ~0x40`).
+	wire flash_hs = (a_in == 13'h1FF4);
+
+	assign flags_out = flash_hs ? 16'd2 : 16'd0;
+	assign d_out     = 8'hBF;
+	assign oe = a_in[12] ? (~ram_rw && ram_sel ? 8'h00 : 8'hFF) : 8'h00;
+
+	assign ram_sel = (a_in[12:9] == 4'b1000);
+	assign ram_a   = {3'd0, a_in[7:0]};
+	assign ram_rw  = a_in[8];
+
+	logic [2:0] bank;
+
+	always @(posedge clk) begin
+		if (a_change) begin
+			case (a_in)
+				13'h1FF5: bank <= 3'd0;
+				13'h1FF6: bank <= 3'd1;
+				13'h1FF7: bank <= 3'd2;
+				13'h1FF8: bank <= 3'd3;
+				13'h1FF9: bank <= 3'd4;
+				13'h1FFA: bank <= 3'd5;
+				13'h1FFB: bank <= 3'd6;
+				default: ;
+			endcase
+		end
+		if (reset)
+			bank <= 0;
+	end
+
+	// Nella variante da 32K i banchi 6502 partono a 1024, dopo il codice ARM.
+	assign rom_a = {4'd0, bank, a_in[11:0]} + (arm_hdr ? 19'd1024 : 19'd0);
+
+endmodule
+
 module mapper_CV
 (
 	input           clk,
@@ -608,7 +670,10 @@ module mapper_E7
 	logic [2:0] bank;
 	logic [1:0] ram_bank;
 
-	// FIXME: Add upper ram bank?
+	// Entrambe le zone di RAM dell'E7 sono gestite: il chilobyte fisso, che
+	// compare a $1000-$17FF solo con il banco 7 attivo, e i quattro blocchi
+	// da 256 byte a $1800-$19FF, scelti da `ram_bank` con gli hotspot
+	// $1FE8-$1FEB. Il bit alto di `ram_a` distingue le due.
 	assign flags_out = 16'd0;
 	assign d_out = 8'd0;
 	assign oe = a_in[12] ? (~ram_rw && ram_sel ? 8'h00 : 8'hFF) : 8'h00;

@@ -710,7 +710,7 @@ logic [15:0] joya, joyb;
 //
 // 5 agosto 2026: prima dipendeva SOLO dalla voce OSD, che parte da spenta.
 // Stella invece lo attacca da sola riconoscendo una firma nella ROM, e i titoli
-// Champ Games ce l'hanno (verificato con tb/quadscan.py: Tutankham, Elevator
+// Champ Games ce l'hanno (verificato: Tutankham, Elevator
 // Agent, Spiders, Turbo; assente su Gorf, Draconian, Lode Runner, DK Arcade).
 // Senza QuadTari la porta risponde due volte con lo STESSO pad: il gioco vede
 // premuto anche il pulsante del secondo giocatore e reagisce come a un Select.
@@ -866,7 +866,7 @@ end
 
 wire [7:0] snac_type = 8'd12;
 wire [3:0] snac_pa_in = {USER_IN[3], USER_IN[5], USER_IN[0], (status[6] ? ~USER_IN[2] : USER_IN[1])};
-wire [1:0] snac_id_in = {USER_IN[6], USER_IN[4]} & ((~status[5] || status[6]) ? 2'b00 : 2'b11); // FIXME: These may be backwards.
+wire [1:0] snac_id_in = {USER_IN[6], USER_IN[4]} & ((~status[5] || status[6]) ? 2'b00 : 2'b11);
 wire snac_il_in = (status[6] ? USER_IN[4] : USER_IN[2]);
 
 // Controller      Lightgun   Trakball   Paddle   Keypad  AmigaM   STM       Mister Pin

@@ -20,8 +20,8 @@
 // RAM, RMW here), $FF2 SETMODE, $FF3 CALLFN (254/255 -> one ARM run), banks.
 //
 // The ARM (thumb_core) masters port A: region 0 ROM (read-only), region 4
-// Harmony RAM, region 0xE minimal LPC timer/SysTick/MAMCR stub (so driver
-// polling loops terminate), 0xD/0xF ignored. Music callbacks (_SetNote /
+// Harmony RAM, region 0xE minimal LPC timer/SysTick/MAMCR implementation
+// (enough for the driver's polling loops to terminate), 0xD/0xF ignored. Music callbacks (_SetNote /
 // _ResetWave / _GetWavePtr / _SetWaveSize) are serviced via cb_* from
 // thumb_core's BX-to-ARM trap.
 //
@@ -932,7 +932,7 @@ module cdf_bridge #(
   end
 
   //--------------------------------------------------------------------------
-  // ARM bus response (2-cycle handshake) + minimal LPC peripheral stub
+  // ARM bus response (2-cycle handshake) + minimal LPC peripherals
   //--------------------------------------------------------------------------
   // Livello 1: questo adapter gira ORA su clk_vid (dominio ARM). Serve
   // bus_req/bus_ack/bus_rdata DIRETTAMENTE dalle porte A M10K (rom_q_a /

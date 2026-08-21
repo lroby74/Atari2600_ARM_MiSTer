@@ -333,7 +333,11 @@ module cart2600
 	assign sel_ram_rw = ram_rw[mapper];
 	assign sel_ram_sel = ram_sel[mapper];
 	assign sel_ram_a = ram_a[mapper];
-	assign rom_a = rom_addr[mapper] & ((mapper == BANKE7 || mapper == BANK3F) ? rom_mask : {19{1'b1}});
+	// SB aggiunto il 20 ago 2026: il registro di banco e' a 7 bit (fino a
+	// 512K) mentre le cartuccie vere sono da 128K o 256K. Stella maschera il
+	// banco con il numero di banchi reali; senza maschera un accesso a un
+	// banco inesistente leggerebbe fuori immagine.
+	assign rom_a = rom_addr[mapper] & ((mapper == BANKE7 || mapper == BANK3F || mapper == BANKSB) ? rom_mask : {19{1'b1}});
 	assign oe = out_en[mapper];
 
 	always_comb begin
@@ -403,7 +407,8 @@ module cart2600
 	// MC   -- Megacart (doesn't seem like it works on real hardware, also no games)
 	// X07  -- X07 Atariage (seems impossible, also cant find any games with it)
 	// 4A50 -- 4A50 (never found a game with this)
-	// FA2  -- FA2 (some kind of flash cart abstraction? Only one homebrew uses)
+	// (FA2 non e' piu' in questo elenco: implementato il 20 ago 2026, serve a
+	//  Star Castle Arcade dei Champ Games. Vedi mapper_FA2 in banks2600.sv.)
 
 	mapper_none mapper_none
 	(
@@ -541,6 +546,26 @@ module cart2600
 		.ram_a      (ram_a[BANKP2]),
 		.rom_a      (rom_addr[BANKP2]),
 		.ce         (ce)
+	);
+
+	mapper_FA2 mapper_FA2
+	(
+		.clk        (clk),
+		.reset      (reset),
+		.a_change   (address_change),
+		.sc         (sc),
+		.a_in       (a_in),
+		.d_in       (d_in),
+		// L'immagine da 32K ha 1K di codice ARM davanti ai banchi 6502;
+		// quelle da 24K e 28K no. rom_size lo dice senza altre sonde.
+		.arm_hdr    (rom_size >= 19'd29696),
+		.d_out      (direct_do[BANKFA2]),
+		.flags_out  (flags_out[BANKFA2]),
+		.oe         (out_en[BANKFA2]),
+		.ram_sel    (ram_sel[BANKFA2]),
+		.ram_rw     (ram_rw[BANKFA2]),
+		.ram_a      (ram_a[BANKFA2]),
+		.rom_a      (rom_addr[BANKFA2])
 	);
 
 	mapper_FA mapper_FA

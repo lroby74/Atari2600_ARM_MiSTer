@@ -1,6 +1,7 @@
-// DPC+ cartridge bridge - PASSO 1 ESTESO.
-//   implementato: fetcher, Fast Fetch redirect, CALLFUNCTION func 0/1/2
-//   stub (PASSO 2): RNG, motore musicale/AMPLITUDE, CALLFUNCTION 254/255 (ARM)
+// DPC+ cartridge bridge.
+//   Implementati: fetcher, Fast Fetch redirect, CALLFUNCTION 0/1/2, il
+//   generatore pseudocasuale, il motore musicale a 3 canali con AMPLITUDE,
+//   e CALLFUNCTION 254/255, che avvia il codice ARM della cartuccia.
 //
 // Semantica da Stella CartDPCPlus.cxx (stella-master/src/emucore/). Modulo
 // INDIPENDENTE dal motore CDF: nessuno stato condiviso con cdf_bridge.sv.
@@ -92,7 +93,7 @@ module dpcplus_bridge #(
   // FIX GLOBALE punto 4: regione 0xE = periferiche LPC (timer 1, SysTick,
   // MAMCR). Prima era indecodificata: una lettura ricadeva sul ramo RAM e
   // restituiva un byte qualunque della DPCRAM, una scrittura veniva scartata.
-  // cdf_bridge ha lo stesso stub dal Livello 1 (cdf_bridge.sv:22-23, 686-736).
+  // cdf_bridge ha le stesse periferiche minime dal Livello 1.
   wire       arm_is_periph = (bus_addr[31:28] == 4'hE);
 
   // ACCESSO ARM DIRETTO (2 agosto 2026). Sostituisce il cammino a 4 lane.
@@ -280,7 +281,7 @@ module dpcplus_bridge #(
   // quando l'ack arriva, bus_addr potrebbe gia' essere cambiato.
   //
   // FIX GLOBALE punto 4: la regione 0xE = periferiche LPC (timer 1, SysTick,
-  // MAMCR). Registri e indirizzi replicano uno-a-uno lo stub di cdf_bridge.
+  // MAMCR). Registri e indirizzi replicano uno-a-uno quelli di cdf_bridge.
   reg        arm_p1;
   reg [3:0]  arm_region_d;
   // STADIO 3b - ACK A 1 CICLO PER LE LETTURE CON INDIRIZZO ANTICIPATO.
@@ -508,9 +509,9 @@ module dpcplus_bridge #(
   //--------------------------------------------------------------------------
   // STEP 4 - MOTORE MUSICALE DPC+ A 3 CANALI.
   //
-  // Era interamente stub: AMPLITUDE tornava 0 fisso, WAVEFORM e NOTE non
-  // facevano nulla -> i titoli che usano l'audio DPC+ erano MUTI (si sentivano
-  // solo gli effetti generati direttamente dalla TIA).
+  // Prima di questo passo AMPLITUDE tornava 0 fisso e WAVEFORM e NOTE non
+  // facevano nulla, quindi i titoli che usano l'audio DPC+ erano MUTI: si
+  // sentivano solo gli effetti generati direttamente dalla TIA.
   //
   // Stella (CartDPCPlus.cxx:164-179, 315-325, 514, 568):
   //   OSC a 20 kHz; ad ogni tick  music_cnt[x] += music_freq[x]

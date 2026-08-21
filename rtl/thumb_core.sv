@@ -4,7 +4,7 @@
 // (public domain / GPL, David Welch / F. Quimby). Nessun firmware proprietario.
 // Stile SystemVerilog-2005, "Sorgelig": always @(posedge clk) / always @*,
 // NO interfaces, NO always_comb/always_ff, NO unpacked struct in porta,
-// NO $display/$finish/initial in rtl/ (solo in tb/).
+// NO $display/$finish/initial: qui dentro c'e' solo hardware sintetizzabile.
 //
 // Ogni opcode ha execute REALE. Riferimenti Thumbulator.cxx:
 //   ADD  add2:1204 add3:1209 add4:1214 add5:1223 add6:1232 add7:1241
@@ -937,7 +937,7 @@ module thumb_core (
             OP_B2:    begin pc <= brt; end   // PASSO 33
             // BX/BLX to an EVEN address means 32-bit ARM code, which this
             // core (like Thumbulator) does not execute: it is either one of
-            // the driver's music-callback stubs (trap and return via LR) or
+            // the driver's music callbacks (trap and return via LR) or
             // the end of the run (e.g. main() returning to LR = cBase).
             OP_BX:    begin
               if (rmv[0]) pc <= rmv & ~32'd1;

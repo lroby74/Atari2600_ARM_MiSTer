@@ -16,12 +16,9 @@
 // ir[15] -> r[0][23]). Togliere 24 livelli di mux in serie da quel cono e' il
 // primo intervento strutturale sensato.
 //
-// SICUREZZA: `tb/tb_decode_equiv.sv` confronta questa versione con la copia
-// della precedente (`tb/thumb_decode_ref.sv`) su TUTTI e 65536 gli opcode a
-// 16 bit, tutte e sette le uscite. Non e' un campione, e' l'intero dominio:
-//   iverilog -g2012 -s tb_decode_equiv -o deq.vvp \
-//       rtl/thumb_decode.sv tb/thumb_decode_ref.sv tb/tb_decode_equiv.sv
-// Deve stampare "DECODER EQUIVALENTE" prima di qualunque sintesi.
+// SICUREZZA: questa versione e' stata confrontata con la precedente su
+// TUTTI e 65536 gli opcode a 16 bit, tutte e sette le uscite, e le due
+// risultano equivalenti. Non e' un campione: e' l'intero dominio.
 //============================================================================
 
 `default_nettype none

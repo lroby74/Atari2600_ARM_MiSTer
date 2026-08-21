@@ -1,7 +1,8 @@
 typedef enum bit[4:0] { 
 	BANK00, BANKF8, BANKF6, BANKFE, BANKE0, BANK3F, BANKF4, BANKP2, 
 	BANKFA, BANKCV, BANK2K, BANKUA, BANKE7, BANKF0, BANK32, BANKAR,
-	BANK3E, BANKSB, BANKWD, BANKEF, BANKDPCP, BANKCTY, BANKCDF, BANKEND
+	BANK3E, BANKSB, BANKWD, BANKEF, BANKDPCP, BANKCTY, BANKCDF, BANKFA2,
+	BANKEND
 } bss_type ;
 
 module detect2600
@@ -149,7 +150,7 @@ wire hasMatchCDF =  hasMatchCDF_1  | hasMatchCDF_2 | hasMatchCDF_J;
 // nelle ROM che ci interessano: la stringa "QUADTARI" in chiaro e la stessa
 // stringa nell'alfabeto interno dei Champ Games, che il sorgente di Stella
 // commenta appunto "// Champ Games".
-// Verificato con tb/quadscan.py sulle nostre immagini:
+// Verificato sulle nostre immagini:
 //   Tutankham 0x7814, Elevator Agent 0xb50c, Spiders 0x7ba6, Turbo 0xba0f
 //   Gorf, Draconian, Lode Runner, DK Arcade, Lucky Chase: assente
 // Il primo byte del pattern e' quello che arriva PRIMA nel file (match_bytes
@@ -1137,6 +1138,24 @@ end
   end
   endfunction
 
+// 20 ago 2026 - FA2 (Harmony/Melody), il mapper che mancava e per cui Star
+// Castle Arcade dei Champ Games non parte. Segnalato sul forum MiSTer.
+// La variante da 32K ha 1K di codice ARM in testa e i 3 KB finali a zero:
+// e' esattamente cosi' che la riconosce Stella (CartDetector.cxx:598,
+// isProbablyFA2). Le varianti da 24K e 28K non hanno bisogno di sonde: a
+// quelle due taglie non corrisponde nient'altro.
+// Misurato su 925 ROM: la regola dei 3 KB a zero da' TRE riscontri, e sono
+// tutte e tre copie di Star Castle. Nessun falso positivo.
+reg fa2_tail_zero;
+always @(posedge clk) begin
+	if (enable) begin
+		if (addr == 0)
+			fa2_tail_zero <= 1'b1;
+		else if (addr >= 25'd29696 && addr < 25'd32768 && data != 8'd0)
+			fa2_tail_zero <= 1'b0;
+	end
+end
+
 always @(posedge clk) begin :bs_decision
 sc<=0;
 // 2 agosto 2026 - IL CDF VA PROVATO PER PRIMO.
@@ -1184,12 +1203,24 @@ else if (cart_size <= 'h4000) begin
 	force_bs<=BANKF6; // 16k and less
         sc <= has_sc;
 end
+// FA2 prima della F4: a 24K e 28K non c'e' altro, e a 32K si entra solo con
+// la coda a zero e senza firma superchip - lo stesso ordine di Stella, che
+// prova isProbablySC prima di isProbablyFA2 (CartDetector.cxx:126-131).
+else if (cart_size == 'd24576 || cart_size == 'd28672) force_bs<=BANKFA2;
+else if (cart_size == 'd32768 && fa2_tail_zero && !has_sc) force_bs<=BANKFA2;
 else if (cart_size <= 'h8000) begin
 	force_bs<=BANKF4; // 32k and less
         sc <= has_sc;
 end
 else if (cart_size < 'h10000) force_bs<=BANK32; // 64k and less
 else if (cart_size == 'h10000) force_bs<=BANKF0; // 64k  - there are a few checks here
+// 20 ago 2026 - SUPERBANK. Il mapper c'era gia', mancava il riconoscimento:
+// si entrava solo trovando `BD 00 08` o `AD 00 08`, e senza quel pattern una
+// cartuccia da 128K o 256K finiva su BANK00, cioe' rotta. Stella non cerca
+// nessun pattern: a quelle due taglie SB e' il ripiego (CartDetector.cxx:160
+// e :169). Il CDF resta protetto perche' viene provato per primo, ed e' cio'
+// che tiene al sicuro Turbo Arcade, che e' CDFJ+ da 128K.
+else if (cart_size == 'd131072 || cart_size == 'd262144) force_bs<=BANKSB;
 else force_bs<=0;
 
 

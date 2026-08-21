@@ -26,7 +26,7 @@ set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 # 1 e' l'unico valore sicuro: un valore piu' alto viene TAGLIATO al numero
 # di core disponibili su chi ne ha di meno, e li' il risultato cambierebbe
 # di nuovo. Si paga in tempo di compilazione, non in prestazioni del core.
-set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 1
 set_global_assignment -name SAVE_DISK_SPACE OFF
 set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP "-40"
@@ -327,7 +327,7 @@ set_global_assignment -name AUTO_EXPORT_VER_COMPATIBLE_DB ON
 # ============================================================================
 
 
-set_global_assignment -name SEED 9
+set_global_assignment -name SEED 3
 
 # --- FITTER SPINTO (12 ago 2026) -------------------------------------------
 # Queste sei direttive erano in `tools/fit_spinto.sh` e NON nel repo: tutte le

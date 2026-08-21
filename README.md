@@ -14,7 +14,15 @@ cartridge, BIOS, XM expansion) has been removed.
   driving, ST mouse, Amiga mouse, BoosterGrip, Robotron, SaveKey, QuadTari.
 * Supercharger tape loading from the ADC (`Load Tape From ADC`).
 * All standard 2600 mappers handled by `cart2600` / `banks2600` (F8, F6, FE,
-  E0, 3F, F4, P2, FA, CV, 2K, UA, E7, F0, 32, AR, 3E, SB, WD, EF, ...).
+  E0, 3F, F4, P2, FA, **FA2**, CV, 2K, UA, E7, F0, 32, AR, 3E, SB, WD, EF, ...).
+  **FA2** (CBS RAM Plus extended, Harmony/Melody: 7 banks of 4K, 256 bytes of
+  RAM, and a 1K ARM header in the 32K variant) was added on 20 Aug 2026 after
+  a report on the MiSTer forum: it is what *Star Castle Arcade* needs.
+  **SB** (SUPERbank, 128K-256K) was already implemented but was only detected
+  when a byte pattern happened to be present; 128K and 256K images now fall
+  back to SB the way Stella does. Real titles covered by this: *Circus Convoy*
+  and *Quest for Tikal* (128K) and *Rescue From Poseidon's Gate* (128K,
+  detected automatically).
 * **ARM-based cartridges**: CDF, CDFJ, CDFJ+ and DPC+, run by a Thumb core in
   the FPGA. Tested on a few dozen titles, including the 64 KB Elevator Agent
   and the 128 KB Turbo Arcade. All the original classics work as well.
@@ -23,8 +31,39 @@ cartridge, BIOS, XM expansion) has been removed.
   screen. It is dismissed the first time a game ROM is loaded, and it is
   generated for both the 15 kHz CRT and the HDMI scaler.
 
+## Video options
+
+* **Stabilize Video** (OSD entry, default `On`). **Leave it on `On`.** The core
+  then emits a fixed NTSC-sized visible window (240 lines) instead of the one
+  the game builds for itself with the VBLANK register, while the frame length
+  stays exactly the one the game produces.
+
+  It matters because some games use the VBLANK register as a *drawing* tool and
+  raise it dozens of times inside one frame. *Star Castle Arcade* is one of
+  them: with the entry on `Off` the MiSTer scaler cannot tell where the active
+  area is, re-detects the video mode, and the picture doubles while the
+  frequency overlay keeps coming back.
+
+  Until 21 Aug 2026 the entry was a trade-off, because a few DPC+ titles (both
+  *Umi* games, *Epic Adventure V2.2*, *Evil Magician Returns*) wobbled with it
+  on and had to be run with it `Off`. That was **our** bug, not theirs: the
+  stabilizer emitted **two VSYNCs per frame** whenever the frame length changed
+  by 1 to 3 lines, producing 4-line frames with zero active lines. Games with a
+  constant frame length — *Star Castle* among them — never hit that path, which
+  is why the two groups wanted opposite settings. Fixed in `video_stabilize`
+  (`rtl/TIA.sv`): one VSYNC per frame, the game's own. Verified on real
+  hardware on about 15 titles.
+
 ## Controller notes
 
+* **Two-button controllers.** The second fire button of a modern two-button pad
+  is delivered on the port's analog pin, the way the real hardware does it, so
+  games that read a second button get one. This is a difference from the
+  original `Atari7800_MiSTer` core: *1942 VCS* responds to the second button
+  here and not there, verified by running the same ROM on both cores on real
+  hardware (21 Aug 2026). It is unlikely to be the only such title.
+  The same line carries the QuadTari detection, so setting the **QuadTari**
+  entry to `Off` disables the second button together with the adapter.
 * **QuadTari** (OSD entry, default `On`). Games detect the adapter from the two
   *analog* pins of the port, not from the controller multiplexing: with the
   entry set to `Off` the port now looks exactly like a plain 2600 port, so the
@@ -102,3 +141,50 @@ Still open, if anybody wants to help:
   it needs about 1.4x the window even when the run starts at the very beginning
   (95,403 clk_vid needed against 69,311 available), so it is not a matter of
   clock frequency — the ARM would have to do less work, not run faster.
+
+## Credits
+
+* The **MiSTer** project and the `Atari7800_MiSTer` core this one is derived
+  from, together with everyone who worked on the original TIA, RIOT and
+  cartridge code.
+* **Stella** and **Gopher2600**, whose implementations were used throughout as
+  independent references — mapper detection, CDF/CDFJ+/DPC+ register layouts
+  and, more than once, as an oracle to settle a disagreement about what the
+  hardware really does.
+* **[Claude Code](https://claude.com/claude-code) (Max plan), used inside VS
+  Code**, which wrote the code in this fork.
+
+### On the use of AI
+
+The work in this fork was done with an AI assistant, and it could not have been
+done without one. That is worth stating plainly rather than leaving it to be
+discovered.
+
+What matters more is how it was kept honest. **Every number in this README was
+measured**, either on the Verilator testbench or on real MiSTer hardware, and
+several convincing theories died on the bench. The vertical wobble on the DPC+
+titles is the clearest example: it was blamed on the games for weeks, then on
+their frame length, then a "vertical cadence lock" was written to compensate
+for it — and that lock was **rejected on hardware**, because it made the
+picture roll. Only then did a probe on the raw TIA signals show the real cause,
+four lines away: the stabilizer was emitting two VSYNCs per frame. The rejected
+attempt is still in the history, on purpose.
+
+Two objections usually come up.
+
+*"We tried AI and the results were a disaster."* The difference is not the
+model, it is the environment. In a chat window you paste a file in and get a
+file out that nobody runs. Here the assistant had a shell: it compiled with
+Quartus, ran regressions over 38 titles under Verilator, drove Gopher2600
+headless as an oracle, and got told it was wrong by the bench — and by the
+hardware — on a regular basis.
+
+*"AI code is unmaintainable and unreadable."* Read the diff. Every non-obvious
+change carries the reason next to it, including the measurements that justified
+it and the attempts that failed; the negative results are written down as
+carefully as the positive ones, because they are what stops the same wrong idea
+from coming back in three weeks.
+
+**A note from the repository owner:** about a dozen assistants were tried before
+this one. The difference was not the model on its own — it was having it inside
+the machine that compiles, with the ability to be proven wrong.
